@@ -4,7 +4,7 @@ A data mining project in R that compares parametric and non-parametric classifie
 
 **Author:** Dinesh Kumar Gummadavelli
 
-📄 **[Read the full report (rendered HTML)](Project.html)** · 📊 [Slides](Final_Parkinsons_Project_Analysis.pptx) · 📝 [Project proposal](Proposal%20for%20Analysis%20of%20Parkinson's%20Dataset.docx)
+📄 **[Read the full report (live page)](https://dinesh3250.github.io/parkinsons-disease-detection-r/)** · 📊 [Slides](Final_Parkinsons_Project_Analysis.pptx) · 📝 [Project proposal](Proposal%20for%20Analysis%20of%20Parkinson's%20Dataset.docx)
 
 ## Overview
 
@@ -64,7 +64,8 @@ See [`Project.html`](Project.html) for the full write-up, including limitations 
 | File | Description |
 |---|---|
 | `Project.Rmd` | R Markdown source for the full analysis |
-| `Project.html` | Rendered report |
+| `Project.html` | Rendered report (served via GitHub Pages) |
+| `index.html` | Redirects the GitHub Pages root to `Project.html` |
 | `parkinsons.csv` | Dataset |
 | `parkinsons_names.csv` | UCI dataset documentation |
 | `Parkinson_s_Dataset_Feature_Mapping.csv` | Feature descriptions grouped by category and the vocal muscles involved |
