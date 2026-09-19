@@ -1,0 +1,940 @@
+---
+title: "Project"
+author: "Dinesh Kumar Gummadavelli"
+date: "2025-04-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(glue)
+library(dplyr)
+library(tidyr)
+library(boot)
+library(corrplot)
+library(caret)
+library(car)
+library(MASS)
+library(e1071)
+library(glmnet)
+library(tree)
+library(randomForest)
+library(gbm)
+library(ggplot2)
+library(reshape2)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introduction
+
+
+### Motivation
+
+Parkinson’s disease is a progressive neurodegenerative disorder that affects millions of people worldwide, leading to a gradual decline in motor and cognitive function. Early detection is crucial for managing symptoms and slowing disease progression. In this project, we aim to analyze a relevant dataset to train a machine learning model capable of accurately predicting early signs of Parkinson’s disease. Our goal is to enable timely intervention, allowing patients to take preventive measures and improve their quality of life.
+
+
+### The Core Research Question
+
+While this project addresses several related questions, our primary objective is to identify the most effective model for detecting Parkinson’s disease. Using a variety of statistical and machine learning techniques covered in our data mining course, we aim to compare different models and select the one that best generalizes the data with minimal misclassification.
+
+### Data Description
+
+The Parkinson's dataset used in this project is sourced from the UC Irvine Machine Learning Repository. It contains 197 instances and 22 features, representing voice measurements collected from 31 individuals—23 of whom have been diagnosed with Parkinson’s Disease. The features are designed to quantify changes in vocal attributes, which are often affected by the motor control impairments associated with Parkinson’s. These measurements capture variations in frequency, amplitude, and other vocal signal characteristics, providing a basis for distinguishing between healthy and affected individuals.
+
+
+# Methodology
+
+
+### Exploring the data.
+
+```{r}
+
+parkinsons_data <- read.csv("parkinsons.csv")
+
+
+glue("The dimensions of the given dataset is {dim(parkinsons_data)[1]} X {dim(parkinsons_data)[2]}")
+
+glue("The number of empty values in the dataset are {sum(is.na(parkinsons_data))}")
+
+
+
+```
+```{r}
+
+# Basic stats of all the feature variables
+
+#summary(parkinsons_data)
+
+
+
+```
+
+```{r}
+
+cor_matrix <- cor(parkinsons_data[ , sapply(parkinsons_data, is.numeric)])
+
+
+corrplot(cor_matrix, method = 'color', number.cex = 0.7, type = 'lower', tl.cex = 0.7)
+```
+
+
+
+As it is evident from the heatmap above, the data has multi-collinearity. The blue color indicates a positive correlation and the red explains a negeative correlation anything in between indicates a low correlation.
+
+
+### Exploring the questions in the proposal by generating various models and generating relevant metrics for analysis
+
+# Question 1.
+
+```{r}
+
+logistic_model <- glm(status ~ ., data = parkinsons_data[, -1], family = "binomial")
+
+summary(logistic_model)
+
+vif(logistic_model)
+
+```
+
+As you can see from the above summary results none of the predictors are significant this is because of high multi-collinearity between the predictors. 
+
+As you can see from the output of the vif function from cars library out 22 features only 6 features have the coefficient as less than 5. This means all the other features bring in multicollinearity.
+
+
+But from the Residual deviance we can tell that the model fit is very good as their is a significant drop when compared to the null deviance.
+
+So, this model can still be considered.
+
+Now lets evaluate the performance of this model using test and train set.
+
+
+Data Split
+
+```{r}
+
+set.seed(32)
+
+train <- sample(1:195, 140)
+
+logistic_model <- glm(status ~ ., data = parkinsons_data[train, -1], family = "binomial")
+
+prob <- predict(logistic_model, newdata = parkinsons_data[-train, -1], type = "response")
+
+pred <- ifelse(prob > 0.5, 1, 0)
+#pred
+
+conf_mat <- table(pred, parkinsons_data[-train, ]$status)
+
+accuracy_log <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+#conf_mat <- confusionMatrix(factor(pred), factor(parkinsons_data[-train, ]$status))
+
+precision_log <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_log <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of logistic regression model the accuracy, precision and recall metrics are the following respectively {accuracy_log}%, {precision_log}% and {recall_log}%")
+
+models <- c("Logistic regression")
+accuracy <- c(accuracy_log)
+precision <- c(precision_log)
+recall <- c(recall_log)
+```
+### So, the usefulness of the predictors is not evident from our analysis with logistic regression but the features collectively are useful with a 85.455% accuracy.
+
+
+# Question 2:
+
+# Parametric
+
+The parametric model we are going to evaluate are:
+1) Logistic regression (already covered in Question 1)
+2) linear and Quadratic discriminant analysis.
+3) Naive Bayes
+4) Lasso and Ridge regularization.
+
+
+
+```{r}
+set.seed(32)
+
+#parkinsons_data$status <- as.factor(parkinsons_data$status)
+
+#lda_model <- lda(status ~ ., data = parkinsons_data[train, -1])
+
+#parkinsons_data$MDVP.Jitter... <- scale(parkinsons_data$MDVP.Jitter...)
+
+lda_model <- lda(status ~ ., data = parkinsons_data[train, -c(1,5, 4, 3, 2, 6)])
+
+pred <- predict(lda_model, newdata = parkinsons_data[-train, -1])
+
+conf_mat <- table(pred$class, parkinsons_data[-train, 18])
+
+conf_mat
+
+accuracy_lda <- round(mean(parkinsons_data[-train, 18] == pred$class), 5) *100
+
+precision_lda <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_lda <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of linear Discriminant analysis regression model the accuracy, precision and recall metrics are the following respectively {accuracy_lda}%, {precision_lda}% and {recall_lda}%")
+
+models <- c(models, "LDA model")
+accuracy <- c(accuracy, accuracy_lda)
+precision <- c(precision, precision_lda)
+recall <- c(recall, recall_lda)
+
+```
+# Note 
+The model appears to improve over logistic regression, but this result isn't fully reliable. Some features had to be removed because they showed no variation within one or more classes, which is a requirement for Linear Discriminant Analysis to work properly.
+
+
+
+
+```{r}
+
+set.seed(32)
+
+qda_model <- qda(status ~., data = parkinsons_data[train, -1])
+
+pred <- predict(qda_model, newdata = parkinsons_data[-train, -1])
+
+conf_mat <- table(parkinsons_data[-train, 18], pred$class)
+
+accuracy_qda <- round(mean(parkinsons_data[-train, 18] == pred$class), 5) * 100
+
+precision_qda <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_qda <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of Quadratic Discriminant analysis regression model the accuracy, precision and recall metrics are the following respectively {accuracy_qda}%, {precision_qda}% and {recall_qda}%")
+
+models <- c(models, "QDA model")
+accuracy <- c(accuracy, accuracy_qda)
+precision <- c(precision, precision_qda)
+recall <- c(recall, recall_qda)
+
+
+
+```
+Although the QDA model showed slightly lower accuracy and precision compared to other models, it achieved 100% recall, making it highly reliable in detecting positive cases. This high sensitivity is especially important in medical data analysis, where minimizing false negatives is critical.
+
+
+
+
+```{r}
+
+set.seed(32)
+
+naiveBayes_model <- naiveBayes(status ~ ., data = parkinsons_data[train, -1])
+
+pred <- predict(naiveBayes_model, newdata = parkinsons_data[-train, -1])
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_nB <- round(mean(parkinsons_data[-train, 18] == pred), 5) * 100
+
+precision_nB <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_nB <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of Naive Bayes analysis regression model the accuracy, precision and recall metrics are the following respectively {accuracy_nB}%, {precision_nB}% and {recall_nB}%")
+
+models <- c(models, "Naive Bayes")
+accuracy <- c(accuracy, accuracy_nB)
+precision <- c(precision, precision_nB)
+recall <- c(recall, recall_nB)
+
+
+
+```
+The Naive Bayes model performed significantly worse than the other models, with low accuracy and recall. This suggests that Naive Bayes may not be a suitable choice for this dataset.
+
+
+
+```{r}
+
+x_train <- model.matrix(status ~ ., data = parkinsons_data[train, -1])[,-18]
+
+y_train <- parkinsons_data[train, ]$status
+
+lasso_model <- cv.glmnet(x_train, y_train, alpha = 1)
+
+x_test <- model.matrix(status ~ ., data = parkinsons_data[-train, -1])[, -18]
+
+prob <- predict(lasso_model, newx = x_test, s = lasso_model$lambda.min)
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+
+conf_mat <- table(pred, parkinsons_data[-train, 18])
+
+accuracy_l1 <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_l1 <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_l1 <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of lasso regularized model the accuracy, precision and recall metrics are the following respectively {accuracy_l1}%, {precision_l1}% and {recall_l1}%")
+
+models <- c(models, "Lasso regularization")
+accuracy <- c(accuracy, accuracy_l1)
+precision <- c(precision, precision_l1)
+recall <- c(recall, recall_l1)
+
+
+
+
+
+x_train <- model.matrix(status ~ ., data = parkinsons_data[train, -1])[,-18]
+
+y_train <- parkinsons_data[train, ]$status
+
+ridge_model <- cv.glmnet(x_train, y_train, alpha = 0)
+
+x_test <- model.matrix(status ~ ., data = parkinsons_data[-train, -1])[, -18]
+
+prob <- predict(ridge_model, newx = x_test, s = ridge_model$lambda.min)
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+
+conf_mat <- table(pred, parkinsons_data[-train, 18])
+
+accuracy_l2 <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_l2 <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_l2 <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of Ridge Regularized model the accuracy, precision and recall metrics are the following respectively {accuracy_l2}%, {precision_l2}% and {recall_l2}%")
+
+models <- c(models, "Ridge Regularization")
+accuracy <- c(accuracy, accuracy_l2)
+precision <- c(precision, precision_l2)
+recall <- c(recall, recall_l2)
+
+
+
+
+```
+
+In our dataset, logistic regression performed better than Lasso and Ridge. This is likely because the dataset is small, and the features are already clean and useful. Lasso and Ridge are helpful when there are too many features or when the features are very similar, but in our case, they may have reduced the importance of features that were actually helpful, which made the performance slightly worse.
+
+
+
+# Non-parametric models
+
+1) KNN
+2) Decision Trees
+3) Random Forrest
+4) Boosting
+
+
+```{r}
+#using caret library.
+
+set.seed(32)
+
+parkinsons_data$status <- as.factor(parkinsons_data$status)
+
+ctrl <- trainControl(method = "cv", number = 10)
+
+
+
+knn_model <- train(status ~ ., data = parkinsons_data[train , -1], trControl = ctrl)
+
+pred <- predict(knn_model, newdata = parkinsons_data[-train, -1])
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_knn <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_knn <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_knn <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of knn model the accuracy, precision and recall metrics are the following respectively {accuracy_knn}%, {precision_knn}% and {recall_knn}%")
+
+models <- c(models, "KNN")
+accuracy <- c(accuracy, accuracy_knn)
+precision <- c(precision, precision_knn)
+recall <- c(recall, recall_knn)
+
+
+
+
+```
+Although the KNN model had lower accuracy and precision compared to other models, it showed an improvement in recall, which is more important for our analysis since identifying all positive cases is a key priority.
+
+
+```{r}
+set.seed(32)
+
+tree_model <- tree(status ~ ., data = parkinsons_data[train, -1])
+
+pred <- predict(tree_model, parkinsons_data[-train, -1], type = "class")
+
+conf_mat <- table(parkinsons_data[-train , 18], pred)
+
+accuracy_tree <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_tree <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_tree <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of decision tree model the accuracy, precision and recall metrics are the following respectively {accuracy_tree}%, {precision_tree}% and {recall_tree}%")
+
+
+models <- c(models, "Decision Tree")
+accuracy <- c(accuracy, accuracy_tree)
+precision <- c(precision, precision_tree)
+recall <- c(recall, recall_tree)
+
+
+
+```
+Decision tree has shown some significant improvement in accuracy in recall although there is a slight drop in precision compared to logistic model it is not that significant
+
+
+```{r}
+set.seed(32)
+
+rf_model <- randomForest(status ~ ., data = parkinsons_data[train, -1], ntree = 500)
+
+
+pred <- unname(predict(rf_model, newdata = parkinsons_data[-train, -1], type = "class"))
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_rf <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_rf <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_rf <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of random forrest model the accuracy, precision and recall metrics are the following respectively {accuracy_rf}%, {precision_rf}% and {recall_rf}%")
+
+models <- c(models, "Random Forrest")
+accuracy <- c(accuracy, accuracy_rf)
+precision <- c(precision, precision_rf)
+recall <- c(recall, recall_rf)
+
+
+
+
+
+set.seed(32)
+
+parkinsons_data$status <- as.numeric(as.character(parkinsons_data$status))
+
+boosting_model <- gbm(status ~ ., data = parkinsons_data[train, -1], distribution = "bernoulli", n.trees = 195, cv.folds = 10)
+
+prob <- predict(boosting_model, newdata = parkinsons_data[-train, -1], type = "response")
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_bst <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_bst <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_bst <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of boosting model the accuracy, precision and recall metrics are the following respectively {accuracy_bst}%, {precision_bst}% and {recall_bst}%")
+
+models <- c(models, "Boosting")
+accuracy <- c(accuracy, accuracy_bst)
+precision <- c(precision, precision_bst)
+recall <- c(recall, recall_bst)
+
+
+
+
+```
+
+The boosting model performed slightly better than the random forest model, although neither outperformed the decision tree. This is likely due to the dataset being small and relatively clean, where simpler models like a single decision tree can perform better. In such cases, added model complexity may not provide additional benefit and can even slightly reduce performance.
+
+
+# Support Vector Machine
+
+```{r}
+set.seed(32)
+
+svm_tune <- tune(svm, status ~ ., data = parkinsons_data[train, -1], list = range(kernal = c("linear", "radial", "polynomial"), cost = c(0.01, 0.1, 0.5, 1, 2, 4, 8, 10), gamma = c(0.01, 0.1, 0.5, 1, 2, 4, 8, 10)))
+
+summary(svm_tune$best.model)
+
+svm_best <- svm(status ~ ., data = parkinsons_data[train, -1], kernal = "radial", cost = 1, gamma = 0.045)
+
+prob <- predict(svm_best, newdata = parkinsons_data[-train, -c(1, 18)])
+
+pred <- ifelse(prob>0.5, 1, 0)
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_svm <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_svm <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_svm <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of boosting model the accuracy, precision and recall metrics are the following respectively {accuracy_svm}%, {precision_svm}% and {recall_svm}%")
+
+models <- c(models, "Support Vector Machine")
+accuracy <- c(accuracy, accuracy_svm)
+precision <- c(precision, precision_svm)
+recall <- c(recall, recall_svm)
+
+
+
+```
+
+We trained a Support Vector Machine (SVM) model using various kernels linear, radial, and polynomial and tuned different cost and gamma values. Based on the results from the tune function, the radial kernel with a cost of 1 and gamma value of 0.045 provided the best separation between the two classes.
+
+Although the model's performance in terms of accuracy and precision was not particularly strong, it stood out in terms of recall (sensitivity) — effectively identifying the positive cases, which is especially important in medical data analysis.
+
+
+# Question 2
+
+```{r}
+data_metrics <- data.frame(models = models, accuracy = accuracy, precision = precision, recall = recall)
+
+print(data_metrics, row.names = FALSE)
+
+
+
+```
+
+### Among all models, the Decision Tree stands out with the highest overall accuracy (94.545%) and a very high recall (97.297%). While other models like QDA and SVM achieve perfect recall, they fall short in either precision or accuracy. In contrast, the Decision Tree maintains strong performance across all three metrics, making it a well-balanced and reliable choice — especially important in medical settings where both accuracy and recall are critical.
+
+### If one has to pick a model that did good on all three metrics it would be Decision Tree and also it has a very high accuracy and recall which is very important in health or medical perspective.
+
+
+```{r}
+results_melted <- melt(data_metrics, id.vars = "models")
+
+ggplot(results_melted, aes(x = models, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Model Comparison: Accuracy, Precision, Recall",
+       y = "Percentage",
+       x = "Model",
+       fill = "Metric") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1))
+```
+
+### Some non-parametric models, particularly the Decision Tree and Boosting, outperformed parametric models in terms of accuracy and recall in this dataset. This suggests that non-parametric models were more effective at capturing complex relationships in the data. However, a few parametric models (like PCA + Logistic or QDA) still achieved perfect recall, showing that performance depends on both the model and the specific dataset characteristics.
+
+
+# Question 3
+
+### Regularization covered in question 2, now performing dimension reduction using PCA
+
+
+
+```{r}
+pca_model <- prcomp(parkinsons_data[train, -c(1, 18)], scale. = TRUE)
+
+plot(1:22, summary(pca_model)[[6]][2, ], type = 'l', xlab = "Prin Comp", 
+     ylab = "% Var Explained")
+
+print("From the scree plot, we can observe an elbow around the 5th principal component, suggesting it as an optimal cutoff. The first five components together explain over 99% of the variance in the dataset, making them a strong choice for dimensionality reduction.")
+
+# Best number of principal components would be 5 and it explains 99% of the variation.
+
+pca_train <- predict(pca_model, newdata = parkinsons_data[train, -c(1, 18)], type = "response")[,1:5]
+pca_test <- predict(pca_model, newdata = parkinsons_data[-train, -c(1, 18)], type = "response")[,1:5]
+
+pca_df <- as.data.frame(pca_train[,1:5])
+
+colnames(pca_df) <- paste0("PC", 1:5)
+
+pca_df$status <- parkinsons_data[train, 18]
+
+pca_logit_model <- glm(status ~ ., data = pca_df, family = "binomial")
+
+pca_test_df <- as.data.frame(pca_test)
+
+prob <- predict(pca_logit_model, newdata = pca_test_df, type = "response")
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_pca <- round((conf_mat['1', '1']+conf_mat['0','0'])/(conf_mat['1', '1']+conf_mat['0','0'] + conf_mat['1','0']+conf_mat['0', '1']), 5) *100
+
+precision_pca <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_pca <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of PCA model the accuracy, precision and recall metrics are the following respectively {accuracy_pca}%, {precision_pca}% and {recall_pca}%")
+
+models <- c(models, "Principal Component regression")
+accuracy <- c(accuracy, accuracy_pca)
+precision <- c(precision, precision_pca)
+recall <- c(recall, recall_pca)
+
+data_metrics <- data.frame(models = models, accuracy = accuracy, precision = precision, recall = recall)
+
+data_metrics[models %in% c("Ridge Regularization", "Lasso regularization", "Principal Component regression", "Logistic regression"), ]
+
+
+```
+
+
+### While regularization methods like Lasso and Ridge did not improve the performance of the logistic regression model, dimensionality reduction using Principal Component Analysis (PCA) led to improvements in both accuracy and recall, with only a slight decrease in precision.
+
+
+
+
+# Question 5
+
+
+
+```{r}
+set.seed(32)
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+
+ctrl <- trainControl(method = "LOOCV")
+
+parkinsons_data$status <- as.factor(parkinsons_data$status)
+
+logit_model <- train(status ~ ., data = parkinsons_data[train, -1], method = "glm", family = "binomial", trControl = ctrl)
+
+prob <- predict(logit_model, newdata = parkinsons_data[-train, -c(1, 18)])
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+conf_mat <- table(parkinsons_data[-train, 18], prob)
+
+accuracy_log_loocv <- round(mean(parkinsons_data[-train, ]$status == prob), 5) *100
+
+precision_log_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_log_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of LOOCV logistic regression the accuracy, precision and recall metrics are the following respectively {accuracy_log_loocv}%, {precision_log_loocv}% and {recall_log_loocv}%")
+
+
+
+
+set.seed(32)
+
+ctrl <- trainControl(method = "cv", number = 10)
+
+
+logit_cv_model <- train(status ~ ., data = parkinsons_data[train, -1], method = "glm",family = "binomial",
+                        trControl = ctrl)
+
+prob <- predict(logit_cv_model, newdata = parkinsons_data[-train, -c(1,18)])
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+conf_mat <- table(parkinsons_data[-train, 18], prob)
+
+accuracy_log_10cv <- round(mean(parkinsons_data[-train, ]$status == prob), 5) *100
+
+precision_log_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_log_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of 10-fold CV logistic regression the accuracy, precision and recall metrics are the following respectively {accuracy_log_10cv}%, {precision_log_10cv}% and {recall_log_10cv}%")
+```
+
+
+### Compared to the original logistic regression model without cross-validation, applying cross-validation techniques led to an improvement in recall, enhancing the model’s sensitivity to positive cases. While there was a slight decrease in precision, this trade-off is acceptable in a medical context, where minimizing false negatives is crucial. Additionally, both LOOCV and 10-fold cross-validation produced identical results, suggesting that either method is equally effective for this dataset.
+
+
+```{r}
+set.seed(32)
+
+ctrl <- trainControl(method = "loocv")
+
+qda_cv_model <- train(status ~ ., data = parkinsons_data[train, -1], method = "qda", trControl = ctrl)
+
+pred <- predict(qda_cv_model, newdata = parkinsons_data[-train, -c(1, 18)])
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_qda_loocv <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_qda_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_qda_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation LOOCV in QDA model, the accuracy, precision and recall metrics are the following respectively {accuracy_qda_loocv}%, {precision_qda_loocv}% and {recall_qda_loocv}%")
+
+
+set.seed(32)
+
+ctrl10 <- trainControl(method = "cv", number = 10)
+
+qda_cv_model <- train(status ~ ., data = parkinsons_data[train, -1], method = "qda", trControl = ctrl)
+
+pred <- predict(qda_cv_model, newdata = parkinsons_data[-train, -c(1, 18)])
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_qda_10cv <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_qda_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_qda_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of 10-fold CV in QDA model, the accuracy, precision and recall metrics are the following respectively {accuracy_qda_10cv}%, {precision_qda_10cv}% and {recall_qda_10cv}%")
+
+```
+
+### Applying cross-validation techniques (both LOOCV and 10-fold) to the QDA model resulted in no change in accuracy, precision, or recall. This suggests that cross-validation had little effect, likely due to the small size of the dataset, where the model’s performance remains stable across different splits.
+
+
+
+
+
+```{r}
+set.seed(32)
+
+ctrl <- trainControl(method = "loocv")
+
+tree_loocv_model <- train(status ~ ., data = parkinsons_data[train, -1], method = "rpart", trControl = ctrl)
+
+pred <- predict(tree_loocv_model, newdata = parkinsons_data[-train, -c(1, 18)])
+
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_tree_loocv <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_tree_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_tree_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of LOOCV on Decision tree model, the accuracy, precision and recall metrics are the following respectively {accuracy_tree_loocv}%, {precision_tree_loocv}% and {recall_tree_loocv}%")
+
+
+
+set.seed(32)
+
+ctrl <- trainControl(method = "cv", number = 10)
+
+tree_10cv_model <- train(status ~ ., data = parkinsons_data[train, -1], method = "rpart", trControl = ctrl)
+
+pred <- predict(tree_10cv_model, newdata = parkinsons_data[-train, -c(1, 18)])
+
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_tree_10cv <- round(mean(parkinsons_data[-train, ]$status == pred), 5) *100
+
+precision_tree_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_tree_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of 10-fold CV on Decision tree model, the accuracy, precision and recall metrics are the following respectively {accuracy_tree_10cv}%, {precision_tree_10cv}% and {recall_tree_10cv}%")
+```
+
+### After applying cross-validation, the Decision Tree no longer appears to be the strongest overall model. While it still performs exceptionally well in terms of recall — a key metric in medical contexts — its drop in accuracy and precision suggests reduced generalizability. Models like PCA + Logistic or Boosting may now be considered more balanced and reliable choices overall, especially when consistency across metrics is important.
+
+
+
+
+```{r}
+ctrl <- trainControl(method = "LOOCV")
+
+parkinsons_data$status <- as.factor(parkinsons_data$status)
+
+pca_logit_model_loocv <- train(status ~ ., data = pca_df, method = "glm", family = "binomial", trControl = ctrl)
+
+prob <- predict(pca_logit_model_loocv, newdata = pca_test_df, type = "raw")
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_pca_loocv <- round((conf_mat['1', '1']+conf_mat['0','0'])/(conf_mat['1', '1']+conf_mat['0','0'] + conf_mat['1','0']+conf_mat['0', '1']), 5) *100
+
+precision_pca_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_pca_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of LOOCV logistic regression the accuracy, precision and recall metrics are the following respectively {accuracy_pca_loocv}%, {precision_pca_loocv}% and {recall_pca_loocv}%")
+
+
+
+
+set.seed(32)
+
+ctrl <- trainControl(method = "cv", number = 10)
+
+
+pca_logit_10cv <- train(status ~ ., data = pca_df, method = "glm",family = "binomial",
+                        trControl = ctrl)
+
+prob <- predict(pca_logit_10cv, newdata = pca_test_df)
+
+pred <- ifelse(prob > 0.5, 1, 0)
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_pca <- round((conf_mat['1', '1']+conf_mat['0','0'])/(conf_mat['1', '1']+conf_mat['0','0'] + conf_mat['1','0']+conf_mat['0', '1']), 5) *100
+
+precision_log_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_log_10cv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of 10-fold CV logistic regression the accuracy, precision and recall metrics are the following respectively {accuracy_log_10cv}%, {precision_log_10cv}% and {recall_log_10cv}%")
+```
+
+
+After applying cross-validation to the logistic regression model using principal components, there was a slight increase in accuracy under LOOCV, while the metrics for 10-fold cross-validation remained the same. In both cases, the model consistently achieved perfect recall and stable precision, indicating strong generalizability and robustness.
+
+```{r}
+
+ctrl <- trainControl(method = "LOOCV")
+
+parkinsons_data$status <- as.factor(parkinsons_data$status)
+
+rf_loocv <- train(status ~ ., data = parkinsons_data[train, -1], method = "rf", trControl = ctrl)
+
+pred <- predict(rf_loocv, newdata = parkinsons_data[-train, -c(1, 18)])
+
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_rf_loocv <- round((conf_mat['1', '1']+conf_mat['0','0'])/(conf_mat['1', '1']+conf_mat['0','0'] + conf_mat['1','0']+conf_mat['0', '1']), 5) *100
+
+precision_rf_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_rf_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of LOOCV logistic regression the accuracy, precision and recall metrics are the following respectively {accuracy_rf_loocv}%, {precision_rf_loocv}% and {recall_rf_loocv}%")
+
+
+
+
+set.seed(32)
+
+ctrl <- trainControl(method = "LOOCV")
+
+parkinsons_data$status <- as.factor(parkinsons_data$status)
+
+rf_10cv <- train(status ~ ., data = parkinsons_data[train, -1], method = "rf", trControl = ctrl)
+
+pred <- predict(rf_10cv, newdata = parkinsons_data[-train, -c(1, 18)])
+
+
+conf_mat <- table(parkinsons_data[-train, 18], pred)
+
+accuracy_rf_loocv <- round((conf_mat['1', '1']+conf_mat['0','0'])/(conf_mat['1', '1']+conf_mat['0','0'] + conf_mat['1','0']+conf_mat['0', '1']), 5) *100
+
+precision_rf_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['0', '1']), 5) * 100
+
+recall_rf_loocv <- round(conf_mat['1', '1']/(conf_mat['1', '1'] + conf_mat['1', '0']), 5) * 100
+
+glue("After the evaluation of LOOCV random forrest the accuracy, precision and recall metrics are the following respectively {accuracy_rf_loocv}%, {precision_rf_loocv}% and {recall_rf_loocv}%")
+
+
+```
+
+
+After performing cross validation techniques we can see that there is slight decrease in all three metrics with LOOCV and with 10 fold CV there is a slight drop in accuracy and precision while recall remained the same.
+
+
+```{r}
+df <- data.frame(
+  Model = c("Logistic", "Decision Tree", "Random Forrest", "QDA", "PCA+Logit"),
+  Accuracy_Before = c(85.5, 94.5, 87.2, 81.8, 87.3),
+  Accuracy_After  = c(85.5, 78.2, 85.5, 81.8, 87.3),
+  Precision_Before = c(97.3, 94.7, 85.7, 78.7, 84.1),
+  Precision_After  = c(83.7, 76.6, 83.7, 78.7, 84.1),
+  Recall_Before = c(83.7, 97.3, 97.2, 100, 100),
+  Recall_After  = c(97.3, 97.3, 97.2, 100, 100)
+)
+
+
+delta_df <- df %>%
+  mutate(
+    Accuracy_Diff = Accuracy_After - Accuracy_Before,
+    Precision_Diff = Precision_After - Precision_Before,
+    Recall_Diff = Recall_After - Recall_Before
+  ) %>%
+  dplyr::select(Model, Accuracy_Diff, Precision_Diff, Recall_Diff) %>%
+  pivot_longer(
+    cols = -Model,
+    names_to = "Metric",
+    values_to = "Delta"
+  )
+
+
+delta_df$Metric <- gsub("_Diff", "", delta_df$Metric)
+
+
+ggplot(delta_df, aes(x = Model, y = Delta, fill = Metric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Change in Metrics After Cross-Validation",
+    y = "Change (%)",
+    x = "Model"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+The application of cross-validation techniques reveals that parametric models generally maintain stable performance, with minimal changes across accuracy, precision, and recall. In contrast, non-parametric models show greater variability, particularly the Decision Tree, which exhibits a notable drop in accuracy and precision. This suggests that parametric models may generalize better on this dataset, while some non-parametric models, though powerful, are more prone to overfitting without regularization or tuning.
+
+
+
+# Question 4
+
+## Interpretability v Predictive performance
+
+
+Interpretable models like Logistic Regression, LDA, and QDA allow clinicians to understand how individual features contribute to the prediction. This transparency is critical in medical settings, where treatment decisions require justification.
+
+On the other hand, complex models like Random Forest, Boosting, or SVMs often achieve higher raw predictive power, especially in capturing nonlinear relationships and interactions. However, they operate as “black boxes” and offer limited insight into why a prediction was made.
+
+
+In this study, the PCA + Logistic Regression model offered an excellent balance — combining interpretability through principal component analysis with perfect recall, making it both trustworthy and highly effective. This supports the idea that interpretable models, when properly tuned, can rival or even surpass black-box models in performance on structured datasets.
+
+
+
+# Discussion
+
+This project aimed to evaluate various parametric and non-parametric models for predicting Parkinson’s disease using voice measurement data. After comprehensive experimentation and cross-validation, the PCA + Logistic Regression model emerged as the most reliable and generalizable, offering perfect recall (100%) and stable accuracy. Other models such as QDA, Boosting, and SVM also demonstrated strong performance, especially in recall, an essential metric for medical diagnostics where false negatives are critical. In contrast, models like Decision Tree, which initially showed very high accuracy, suffered notable performance drops after cross-validation, revealing overfitting. Overall, the study highlights the importance of model validation and supports the use of parametric models for their stability in small, structured datasets.
+
+
+
+
+## Limitations
+The dataset was relatively small (195 samples), which limits the generalizability of results and may exaggerate model sensitivity to data splits.
+
+Some models, such as LDA, required feature removal due to zero variance, possibly reducing their full potential.
+
+Class imbalance (more '1's than '0's) may have skewed metrics like accuracy, underemphasizing minority class performance.
+
+## What We Would Do Differently
+Perform best subsets regression to better understand the importance of features and remove redundant features
+
+Use more advanced techniques such as SMOTE (Synthetic Minority Over-sampling) to better balance the classes.
+
+Include hyperparameter tuning via grid search for all models to ensure optimal performance under consistent validation.
+
+
+## Future Directions
+Use a larger and more diverse dataset, possibly including multiple modalities (e.g., imaging, wearable sensor data).
+
+Explore ensemble methods combining parametric and non-parametric models for robustness.
+
+Incorporate time-series models or longitudinal patient data to track disease progression.
+
+Build an interactive diagnostic tool or dashboard to demonstrate real-world utility to clinicians.
+
+
+

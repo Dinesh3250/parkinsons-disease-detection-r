@@ -1,0 +1,23 @@
+Feature,Category,Description,Muscles/Region Involved
+MDVP:Jitter(%),Jitter,Frequency (pitch) instability,"Cricothyroid, Thyroarytenoid"
+MDVP:Jitter(Abs),Jitter,Absolute variation in pitch,"Cricothyroid, Thyroarytenoid"
+RAP,Jitter,Relative average perturbation (local jitter),"Cricothyroid, Thyroarytenoid"
+PPQ,Jitter,Pitch perturbation quotient,"Cricothyroid, Thyroarytenoid"
+DDP,Jitter,Difference of differences of periods,"Cricothyroid, Thyroarytenoid"
+MDVP:Shimmer,Shimmer,Amplitude instability,"Diaphragm, Intercostals"
+MDVP:Shimmer(dB),Shimmer,Amplitude instability (dB),"Diaphragm, Intercostals"
+APQ3,Shimmer,Amplitude perturbation quotient (3 pt),"Diaphragm, Intercostals"
+APQ5,Shimmer,Amplitude perturbation quotient (5 pt),"Diaphragm, Intercostals"
+MDVP:APQ,Shimmer,Average amplitude perturbation,"Diaphragm, Intercostals"
+DDA,Shimmer,Difference of differences of amplitudes,"Diaphragm, Intercostals"
+MDVP:Fo(Hz),Pitch,Average fundamental frequency (pitch),"Cricothyroid, Thyroarytenoid"
+MDVP:Fhi(Hz),Pitch,Highest fundamental frequency,Cricothyroid
+MDVP:Flo(Hz),Pitch,Lowest fundamental frequency,Thyroarytenoid
+NHR,Voice Quality,Noise-to-harmonics ratio,"Interarytenoid, Cricoarytenoid"
+HNR,Voice Quality,Harmonics-to-noise ratio,"Interarytenoid, Cricoarytenoid"
+RPDE,Neural Coordination,Recurrence period density entropy,"Basal Ganglia, Motor Cortex"
+DFA,Neural Coordination,Detrended fluctuation analysis,"Basal Ganglia, Motor Cortex"
+PPE,Neural Coordination,Pitch period entropy,"Basal Ganglia, Motor Cortex"
+spread1,Neural Coordination,Nonlinear deviation measure 1,"Basal Ganglia, Motor Cortex"
+spread2,Neural Coordination,Nonlinear deviation measure 2,"Basal Ganglia, Motor Cortex"
+D2,Neural Coordination,Correlation dimension,"Basal Ganglia, Motor Cortex"

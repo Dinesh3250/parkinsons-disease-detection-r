@@ -1,0 +1,7 @@
+# R session artifacts
+.RData
+.Rhistory
+.Rproj.user/
+
+# Office lock files
+~$*
