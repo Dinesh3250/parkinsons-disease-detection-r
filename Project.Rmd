@@ -369,7 +369,8 @@ ctrl <- trainControl(method = "cv", number = 10)
 
 
 
-knn_model <- train(status ~ ., data = parkinsons_data[train , -1], trControl = ctrl)
+knn_model <- train(status ~ ., data = parkinsons_data[train , -1], method = "knn",
+                   preProcess = c("center", "scale"), trControl = ctrl)
 
 pred <- predict(knn_model, newdata = parkinsons_data[-train, -1])
 
@@ -392,7 +393,7 @@ recall <- c(recall, recall_knn)
 
 
 ```
-KNN's metrics (78.2% accuracy, 78.2% precision, 100% recall) are again identical to the always-Parkinson's baseline, so it did not learn to separate the two groups of people.
+KNN (70.9% accuracy, 76.5% precision, 90.7% recall, on standardised features with k chosen by 10-fold cross-validation) is below the always-Parkinson's baseline.
 
 
 ```{r}
@@ -597,9 +598,9 @@ print(data_metrics, row.names = FALSE)
 
 ```
 
-### On this single split, Naive Bayes (87.3% accuracy) and PCA regression (81.8%) are the only two models above the 78.2% always-Parkinson's baseline. QDA, Ridge, KNN, Random Forest and Boosting all sit exactly on the baseline, and Logistic regression, LDA, Lasso, the Decision Tree and the SVM are below it. Because the test set holds only 9 people, differences of a few percentage points correspond to one or two recordings and should not be over-read.
+### On this single split, Naive Bayes (87.3% accuracy) and PCA regression (81.8%) are the only two models above the 78.2% always-Parkinson's baseline. QDA, Ridge, Random Forest and Boosting all sit exactly on the baseline, and Logistic regression, LDA, Lasso, KNN, the Decision Tree and the SVM are below it. Because the test set holds only 9 people, differences of a few percentage points correspond to one or two recordings and should not be over-read.
 
-### Recall alone is not a good yardstick here: five models reach 100% recall simply by never predicting "healthy". Precision and accuracy have to be read alongside it, and the repeated-split check below gives a more trustworthy ranking than this single split.
+### Recall alone is not a good yardstick here: four models (QDA, Ridge, Random Forest and Boosting) reach 100% recall simply by never predicting "healthy". Precision and accuracy have to be read alongside it, and the repeated-split check below gives a more trustworthy ranking than this single split.
 
 
 ```{r}

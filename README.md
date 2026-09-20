@@ -4,7 +4,7 @@ A data mining project in R that compares parametric and non-parametric classifie
 
 **Author:** Dinesh Kumar Gummadavelli
 
-📄 **[Read the full report (live page)](https://dinesh3250.github.io/parkinsons-disease-detection-r/)** · 📊 [Slides (original submission)](Final_Parkinsons_Project_Analysis.pptx) · 📝 [Project proposal](Proposal%20for%20Analysis%20of%20Parkinson's%20Dataset.docx)
+📄 **[Read the full report (live page)](https://dinesh3250.github.io/parkinsons-disease-detection-r/)**
 
 ## Overview
 
@@ -64,7 +64,7 @@ A trivial baseline that labels every recording as Parkinson's scores **78.2% acc
 | Naive Bayes | 87.3 | 90.9 | 93.0 |
 | Lasso | 69.1 | 76.0 | 88.4 |
 | Ridge | 78.2 | 78.2 | 100.0 |
-| KNN | 78.2 | 78.2 | 100.0 |
+| KNN | 70.9 | 76.5 | 90.7 |
 | Decision Tree | 74.5 | 78.4 | 93.0 |
 | Random Forest | 78.2 | 78.2 | 100.0 |
 | Boosting | 78.2 | 78.2 | 100.0 |
@@ -81,7 +81,7 @@ A trivial baseline that labels every recording as Parkinson's scores **78.2% acc
 
 See [`Project.html`](Project.html) for the full write-up, including limitations and future directions.
 
-> **Note:** `Final_Parkinsons_Project_Analysis.pptx` and the proposal document reflect the original course submission, which used a random recording-level split. The results in `Project.Rmd` / `Project.html` are the corrected ones. The original report is preserved in the git history (tag `v1-original-submission`).
+> **Note:** an earlier version of this analysis used a random recording-level split, which inflated the scores. It is preserved in the git history under the tag `v1-original-submission`.
 
 ## Repository contents
 
@@ -94,8 +94,6 @@ See [`Project.html`](Project.html) for the full write-up, including limitations 
 | `parkinsons_names.csv` | UCI dataset documentation |
 | `Parkinson_s_Dataset_Feature_Mapping.csv` | Feature descriptions grouped by category and the vocal muscles involved |
 | `correlation_plot.png` | Correlation heatmap of the features |
-| `Final_Parkinsons_Project_Analysis.pptx` | Presentation slides (original submission) |
-| `Proposal for Analysis of Parkinson's Dataset.docx` | Project proposal (original submission) |
 
 ## Reproducing the analysis
 
